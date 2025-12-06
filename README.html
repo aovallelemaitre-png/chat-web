@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mini Foro</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f2f2f2; margin:0; padding:0; }
+    header { background:#ff4500; color:white; padding:15px; font-size:24px; }
+    #postForm { background:white; padding:15px; margin:15px; border-radius:8px; }
+    #posts { margin:15px; }
+    .post { background:white; padding:15px; border-radius:8px; margin-bottom:10px; }
+    .meta { font-size:12px; color:gray; margin-top:5px; }
+  </style>
+</head>
+<body>
+  <header>Mini Reddit Chat</header>
+
+  <div id="access" style="background:white; padding:15px; margin:15px; border-radius:8px;">
+    <input id="room" placeholder="Nombre del chat" style="width:100%; padding:8px" />
+    <input id="pass" type="password" placeholder="Contraseña" style="width:100%; padding:8px; margin-top:10px" />
+    <button onclick="enterRoom()" style="margin-top:10px; padding:10px 20px">Entrar</button>
+  </div>
+
+  <div id="postForm" style="display:none">
+    <input id="username" placeholder="Tu nombre" style="width:100%; padding:8px" />
+    <textarea id="message" placeholder="Escribe un mensaje..." style="width:100%; height:80px; margin-top:10px; padding:8px"></textarea>
+    <button onclick="sendPost()" style="margin-top:10px; padding:10px 20px">Publicar</button>
+  </div>
+
+  <div id="posts"></div>
+
+  <script>
+// Sistema de salas robusto con lista, salas públicas y privadas
+let currentRoom = null;
+let rooms = JSON.parse(localStorage.getItem('rooms') || '{}');
+
+// Crear sala pública NMS si no existe
+if (!rooms["NO MAN'S SKY datos"]) {
+  rooms["NO MAN'S SKY datos"] = { pass: null };
+  localStorage.setItem('rooms', JSON.stringify(rooms));
+}
+
+function renderRoomList() {
+  const list = Object.keys(rooms);
+  let html = '<h3>Salas disponibles</h3>';
+  list.forEach(r => {
+    const locked = rooms[r].pass ? '🔒' : '🔓';
+    html += `<div style="padding:8px; margin:5px; background:#eee; border-radius:6px; cursor:pointer" onclick=selectRoom('${r}')>${locked} ${r}</div>`;
+  });
+  document.getElementById('roomList').innerHTML = html;
+}
+
+function selectRoom(name) {
+  document.getElementById('room').value = name;
+  document.getElementById('pass').value = '';
+}
+
+function enterRoom() {
+  const room = document.getElementById('room').value.trim();
+  const pass = document.getElementById('pass').value.trim();
+  if(!room) return alert('Ingresa un nombre de sala');
+
+  const stored = rooms[room]?.pass || null;
+
+  if (stored && stored !== pass) return alert('Contraseña incorrecta');
+
+  if (!stored && pass) {
+    rooms[room] = { pass };
+    localStorage.setItem('rooms', JSON.stringify(rooms));
+  } else if (!stored && !pass) {
+    rooms[room] = { pass: null };
+    localStorage.setItem('rooms', JSON.stringify(rooms));
+  }
+
+  currentRoom = room;
+  document.getElementById('access').style.display='none';
+  document.getElementById('postForm').style.display='block';
+  loadPosts();
+}
+
+function loadPosts() {
+  const saved = JSON.parse(localStorage.getItem('posts_'+currentRoom) || '[]');
+  const container = document.getElementById('posts');
+  container.innerHTML = '';
+
+  saved.reverse().forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'post';
+    div.innerHTML = `<strong>${p.user}</strong><br>${p.text}<div class="meta">${p.time}</div>`;
+    container.appendChild(div);
+  });
+}
+
+function sendPost() {
+  const user = document.getElementById('username').value.trim();
+  const msg = document.getElementById('message').value.trim();
+  if (!user || !msg) return alert('Completa todos los campos');
+
+  const posts = JSON.parse(localStorage.getItem('posts_'+currentRoom) || '[]');
+  posts.push({ user, text: msg, time: new Date().toLocaleString() });
+  localStorage.setItem('posts_'+currentRoom, JSON.stringify(posts));
+
+  document.getElementById('message').value = '';
+  loadPosts();
+}
+
+renderRoomList();
+</script>
+</body>
+</html>
